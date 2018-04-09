@@ -1,0 +1,217 @@
+<!doctype html>
+<html lang="en">
+	<head>
+		<meta charset="UTF-8" />
+		<title>My First Game Built with Phaser 3</title>
+		<script src="//cdn.jsdelivr.net/npm/phaser@3.1.1/dist/phaser.js"></script>
+		<style type="text/css">
+		html {
+			width: 100%;
+			height: 100%;
+		}
+		body {
+			width: 100%;
+			height: 100%;
+			min-width: 800px;
+			min-height: 600px;
+			margin: 0;
+			display: flex;
+			text-align: center;
+			align-items: center;
+			justify-content: center;
+		}
+		</style>
+	</head>
+	<body>
+		<script type="text/javascript">
+			var config = {
+				type: Phaser.AUTO,
+				width: 800,
+				height: 600,
+				physics: {
+					default: 'arcade',
+					arcade: {
+						gravity: { y: 1000 },
+						debug: false
+					}
+				},
+				scene: {
+					preload: preload,
+					create: create,
+					update: update
+				}
+			};
+
+			//----------------------------------------------------------------
+
+			var defaultControlling = [{
+				'up': new Phaser.Input.Keyboard.Key(87),	// key: W
+		    	'down': new Phaser.Input.Keyboard.Key(83),	// key: S
+		    	'left': new Phaser.Input.Keyboard.Key(65),	// key: A
+		    	'right': new Phaser.Input.Keyboard.Key(68),	// key: D
+		    	'jump': new Phaser.Input.Keyboard.Key(32)	// key: Space
+			}, {
+				'up': new Phaser.Input.Keyboard.Key(104),	// key: num8
+		    	'down': new Phaser.Input.Keyboard.Key(101),	// key: num5
+		    	'left': new Phaser.Input.Keyboard.Key(100),	// key: num4
+		    	'right': new Phaser.Input.Keyboard.Key(102),// key: num6
+		    	'jump': new Phaser.Input.Keyboard.Key(96)	// key: num0
+			}];
+			var defaultWalkVelocity = [300, 300];
+			var defaultJumpVelocity = [-400, -400];
+			var defaultArrowsAmout = [3, 3];
+			var defaultHealth = [5, 5];
+
+			//----------------------------------------------------------------
+
+			var platforms;
+			var ground;
+			var player = [];
+			var keys = {};
+			var cursors;
+			var mouseKeyIsDown = false;
+			var mousePosition = {'x': null, 'y': null};
+
+			var game = new Phaser.Game(config);
+
+			function preload() {
+				this.load.image('ground', 'src/game/img/ground.png');
+				this.load.image('arrow-icon', 'src/game/img/arrow-icon.png');
+				this.load.spritesheet('player-white', 'src/game/img/player-white.png', {frameWidth: 29, frameHeight: 60});
+			}
+
+			function create() {
+			    platforms = this.physics.add.staticGroup();
+
+			    platforms.create(400, 575, 'ground');
+
+			    // Setup Players
+			    player[0] = this.physics.add.sprite(50, 500, 'player-white');
+			    player[1] = this.physics.add.sprite(750, 500, 'player-white').setTint(0xa0a0ff);
+
+			    for (let thePlayer of player) {
+			    	thePlayer.setCollideWorldBounds(true);
+			    	thePlayer.setBounce(0);
+			    }
+
+			    // Setup Physics Colliding & Overlapping
+			    for (let thePlayer of player) {
+			    	this.physics.add.collider(thePlayer, platforms);
+			    }
+			    for (let i = 0; i < player.length - 1; i++) {
+			    	for (let j = i + 1; j < player.length; j++) {
+			    		this.physics.add.collider(player[i], player[j])
+			    	}
+			    }
+
+			    // Setup Players' Properties
+			    for (let i = 0; i < player.length; i++) {
+			    	player[i].controlling = defaultControlling[i];
+			    	player[i].walkVelocity = defaultWalkVelocity[i];
+			    	player[i].jumpVelocity = defaultJumpVelocity[i];
+			    	player[i].arrowsAmout = defaultArrowsAmout[i];
+			    	player[i].health = defaultHealth[i];
+			    }
+
+			    // Setup Amination
+			    this.anims.create({
+			    	key: 'front',
+			    	frames: [ { key: 'player-white', frame: 0 } ],
+			    	frameRate: 20
+			    });
+			    this.anims.create({
+			    	key: 'side',
+			    	frames: [ { key: 'player-white', frame: 2 } ],
+			    	frameRate: 20
+			    });
+			    this.anims.create({
+			    	key: 'crouch',
+			    	frames: [ { key: 'player-white', frame: 1 } ],
+			    	frameRate: 20
+			    });
+			    this.anims.create({
+			    	key: 'walk',
+			    	frames: this.anims.generateFrameNumbers('player-white', { start: 2, end: 3 }),
+			    	frameRate: 10,
+			    	repeat: -1
+			    });
+
+			    // Setup Input Event
+			    cursors = this.input.keyboard.createCursorKeys();
+
+			    window.onkeydown = function (e) {
+			    	keyTrigger(e.keyCode);
+			    	keys[e.keyCode] = true;
+			    };
+			    window.onkeyup = function (e) {
+			    	keys[e.keyCode] = undefined;
+			    };
+			    window.onmousedown = function (e) {
+			    	if (e.button == 0) mouseKeyIsDown = true;
+			    }
+			    window.onmouseup = function (e) {
+			    	if (e.button == 0) mouseKeyIsDown = false;
+			    }
+			    window.onmousemove = function (e) {
+			    	let canvasRect = game.canvas.getBoundingClientRect();	    	
+			    	mousePosition.x = e.clientX - canvasRect.left;
+			    	mousePosition.y = e.clientY - canvasRect.top;
+			    };
+			}
+
+			function update() {
+
+				// Players' Movement
+				// Players' Jump at func 'keyTrigger'
+				for (let thePlayer of player) {
+					if (isKeyDown(thePlayer.controlling.down.keyCode) && thePlayer.body.touching.down) {
+						thePlayer.setVelocityX(0);
+						thePlayer.scaleX = Math.abs(thePlayer.scaleX);
+						thePlayer.anims.play('crouch', true);
+					}
+					else if (isKeyDown(thePlayer.controlling.left.keyCode) && isKeyDown(thePlayer.controlling.right.keyCode)) {
+						thePlayer.setVelocityX(0);
+						thePlayer.scaleX = Math.abs(thePlayer.scaleX);
+						thePlayer.anims.play('front', true);
+					}
+					else if (isKeyDown(thePlayer.controlling.left.keyCode)) {
+						thePlayer.setVelocityX(-1 * thePlayer.walkVelocity);
+						thePlayer.scaleX = Math.abs(thePlayer.scaleX);
+						if (thePlayer.body.touching.down) {
+							thePlayer.anims.play('walk', true);
+						} else {
+							thePlayer.anims.play('side', true);
+						}
+					}
+					else if (isKeyDown(thePlayer.controlling.right.keyCode)) {
+						thePlayer.setVelocityX(thePlayer.walkVelocity);
+						thePlayer.scaleX = -1 * Math.abs(thePlayer.scaleX);
+						if (thePlayer.body.touching.down) {
+							thePlayer.anims.play('walk', true);
+						} else {
+							thePlayer.anims.play('side', true);
+						}
+					}
+					else {
+						thePlayer.setVelocityX(0);
+						thePlayer.scaleX = Math.abs(thePlayer.scaleX);
+						thePlayer.anims.play('front', true);
+					}
+				}
+			}
+
+			function isKeyDown(keyCode) {
+				if (keys[keyCode]) return true ; else return false;
+			}
+			
+			function keyTrigger(keyCode) {
+				for (let thePlayer of player) {
+					if (keyCode == thePlayer.controlling.jump.keyCode && thePlayer.body.touching.down && !isKeyDown(keyCode)) {	// Player Jump Detecting
+						thePlayer.setVelocityY(thePlayer.jumpVelocity);
+					}
+				}
+			}
+
+		</script>
+	</body>
+</html>
