@@ -59,8 +59,10 @@
 			}];
 			var defaultWalkVelocity = [300, 300];
 			var defaultJumpVelocity = [-400, -400];
-			var defaultArrowsAmout = [3, 3];
+			var defaultStatePositionX = [80, 720];
 			var defaultHealth = [5, 5];
+			var defaultArrowsAmout = [3, 3];
+			var defaultArrowIconDirection = [1, -1];
 
 			//----------------------------------------------------------------
 
@@ -76,6 +78,7 @@
 
 			function preload() {
 				this.load.image('ground', 'src/game/img/ground.png');
+				this.load.image('heart', 'src/game/img/heart.png');
 				this.load.image('arrow-icon', 'src/game/img/arrow-icon.png');
 				this.load.spritesheet('player-white', 'src/game/img/player-white.png', {frameWidth: 29, frameHeight: 60});
 			}
@@ -109,9 +112,21 @@
 			    	player[i].controlling = defaultControlling[i];
 			    	player[i].walkVelocity = defaultWalkVelocity[i];
 			    	player[i].jumpVelocity = defaultJumpVelocity[i];
-			    	player[i].arrowsAmout = defaultArrowsAmout[i];
+			    	player[i].statePositionX = defaultStatePositionX[i];
 			    	player[i].health = defaultHealth[i];
+			    	player[i].arrowsAmout = defaultArrowsAmout[i];
+			    	player[i].arrowIconDirection = defaultArrowIconDirection[i];
 			    }
+
+			    // Setup Player State
+			    for (let thePlayer of player) {
+			    	thePlayer.stateDisplay = {
+			    		'arrowIcons': this.add.group();
+			    		'heartIcon': this.add.image(thePlayer.statePositionX, 50, 'heart');
+			    		'healthText': this.add.text(thePlayer.statePositionX - 10, 50 - 14, '', {fontSize: '33px', fill: '#ffffff'});
+			    	}
+			    }
+			    updatePlayerState();
 
 			    // Setup Amination
 			    this.anims.create({
@@ -200,6 +215,7 @@
 				}
 			}
 
+			// Tools Functions
 			function isKeyDown(keyCode) {
 				if (keys[keyCode]) return true ; else return false;
 			}
@@ -210,6 +226,15 @@
 						thePlayer.setVelocityY(thePlayer.jumpVelocity);
 					}
 				}
+			}
+
+			// Game Functions
+			function updatePlayerState() {
+				for (let thePlayer of player) {
+			    	for (var i = 0; i < thePlayer.arrowsAmout; i++) {
+			    		thePlayer.stateDisplay.arrowIcons.create(thePlayer.statePositionX, i * 50 + 120, 'arrow-icon').scaleX *= thePlayer.arrowIconDirection;
+			    	}
+			    }
 			}
 
 		</script>
