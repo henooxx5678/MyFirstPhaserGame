@@ -76,12 +76,14 @@
 	var defaultArrowsAmout = [3, 3];
 	var defaultArrowIconDirection = [1, -1];
 	var defaultAimingDirection = [0, Math.PI];				// right, left
+	var defaultArrowSpeed = 1000;
 
 	//----------------------------------------------------------------
 
 	var platforms;
 	var player = [];
 	var arrows;
+	var arrowSpeed = defaultArrowSpeed;
 	var keys = {};
 	var cursors;
 	var mouseKeyIsDown = false;
@@ -114,7 +116,7 @@
 		}
 
 		// Setup Bow and Arrows
-
+		arrows = this.physics.add.group();
 
 		// Setup Physics Colliding & Overlapping
 		for (let thePlayer of player) {
@@ -232,8 +234,8 @@
 				thePlayer.anims.play('front', true);
 			}
 
-			if (isKeyDown(thePlayer.controlling.shoot.keyCode)) {
-
+			for (let theArrow of arrows.getChildren()) {
+				theArrow.rotation = Math.atan(theArrow.body.velocity.y / theArrow.body.velocity.x);
 			}
 		}
 	}
@@ -245,8 +247,13 @@
 
 	function keyTrigger(keyCode) {
 		for (let thePlayer of player) {
+			// Player Jump
 			if (keyCode == thePlayer.controlling.jump.keyCode && thePlayer.body.touching.down && !isKeyDown(keyCode)) {	// Player Jump Detecting
 				thePlayer.setVelocityY(thePlayer.jumpVelocity);
+			}
+			// Player shoot
+			if (keyCode == thePlayer.controlling.shoot.keyCode && thePlayer.arrowsAmout > 0) {
+				shootArrow(thePlayer);
 			}
 		}
 	}
@@ -259,6 +266,11 @@
 	function shootArrow(thePlayer) {
 		thePlayer.arrowsAmout -= 1;
 		updateArrowIcons(thePlayer);
+		arrows.create(thePlayer.x, thePlayer.y, 'arrow');
+		arrows.getChildren()[arrows.getLength() - 1].rotation = thePlayer.aimingDirection;
+		let velocityX = Math.round(arrowSpeed * Math.cos(thePlayer.aimingDirection), 3);
+		let velocityY = Math.round(arrowSpeed * Math.sin(thePlayer.aimingDirection), 3);
+		arrows.getChildren()[arrows.getLength() - 1].setVelocity(velocityX, velocityY);
 	}
 
 	function updateHealthDisplay(thePlayer) {
