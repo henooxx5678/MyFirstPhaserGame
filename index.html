@@ -45,29 +45,39 @@
 	//----------------------------------------------------------------
 
 	var defaultControlling = [{
-		'up': new Phaser.Input.Keyboard.Key(87),			// key: W
-		'down': new Phaser.Input.Keyboard.Key(83),			// key: S
-		'left': new Phaser.Input.Keyboard.Key(65),			// key: A
-		'right': new Phaser.Input.Keyboard.Key(68),			// key: D
-		'jump': new Phaser.Input.Keyboard.Key(32),			// key: Space
-		'shoot': new Phaser.Input.Keyboard.Key(76),			// key: L
-		'aim-left': new Phaser.Input.Keyboard.Key(75),		// key: K
-		'aim-right': new Phaser.Input.Keyboard.Key(186),	// key: ;
-		'aim-top': new Phaser.Input.Keyboard.Key(79),		// key: O
-		'aim-lefttop': new Phaser.Input.Keyboard.Key(73),	// key: I
-		'aim-righttop': new Phaser.Input.Keyboard.Key(80)	// key: P
+		'up': new Phaser.Input.Keyboard.Key(87),				// key: W
+		'down': new Phaser.Input.Keyboard.Key(83),				// key: S
+		'left': new Phaser.Input.Keyboard.Key(65),				// key: A
+		'right': new Phaser.Input.Keyboard.Key(68),				// key: D
+		'jump': new Phaser.Input.Keyboard.Key(32),				// key: Space
+		'shoot': new Phaser.Input.Keyboard.Key(76),				// key: L
+		'aim': {
+			'left': new Phaser.Input.Keyboard.Key(75),			// key: K
+			'right': new Phaser.Input.Keyboard.Key(186),		// key: ;
+			'top': new Phaser.Input.Keyboard.Key(79),			// key: O
+			'bottom': new Phaser.Input.Keyboard.Key(190),		// key: .
+			'lefttop': new Phaser.Input.Keyboard.Key(73),		// key: I
+			'righttop': new Phaser.Input.Keyboard.Key(80),		// key: P
+			'leftbottom': new Phaser.Input.Keyboard.Key(188),	// key: ,
+			'rightbottom': new Phaser.Input.Keyboard.Key(191)	// key: /
+		}
 	}, {
-		'up': new Phaser.Input.Keyboard.Key(104),			// key: num8
-		'down': new Phaser.Input.Keyboard.Key(101),			// key: num5
-		'left': new Phaser.Input.Keyboard.Key(100),			// key: num4
-		'right': new Phaser.Input.Keyboard.Key(102),		// key: num6
-		'jump': new Phaser.Input.Keyboard.Key(96),			// key: num0
-		'shoot': new Phaser.Input.Keyboard.Key(72),			// key: H
-		'aim-left': new Phaser.Input.Keyboard.Key(71),		// key: G
-		'aim-right': new Phaser.Input.Keyboard.Key(74),		// key: J
-		'aim-top': new Phaser.Input.Keyboard.Key(89),		// key: Y
-		'aim-lefttop': new Phaser.Input.Keyboard.Key(84),	// key: T
-		'aim-righttop': new Phaser.Input.Keyboard.Key(85)	// key: U
+		'up': new Phaser.Input.Keyboard.Key(104),				// key: num8
+		'down': new Phaser.Input.Keyboard.Key(101),				// key: num5
+		'left': new Phaser.Input.Keyboard.Key(100),				// key: num4
+		'right': new Phaser.Input.Keyboard.Key(102),			// key: num6
+		'jump': new Phaser.Input.Keyboard.Key(96),				// key: num0
+		'shoot': new Phaser.Input.Keyboard.Key(72),				// key: H
+		'aim': {
+			'left': new Phaser.Input.Keyboard.Key(71),			// key: G
+			'right': new Phaser.Input.Keyboard.Key(74),			// key: J
+			'top': new Phaser.Input.Keyboard.Key(89),			// key: Y
+			'bottom': new Phaser.Input.Keyboard.Key(78),		// key: N
+			'lefttop': new Phaser.Input.Keyboard.Key(84),		// key: T
+			'righttop': new Phaser.Input.Keyboard.Key(85),		// key: U
+			'leftbottom': new Phaser.Input.Keyboard.Key(66),	// key: B
+			'rightbottom': new Phaser.Input.Keyboard.Key(77)	// key: M
+		}
 	}];
 	var defaultWalkVelocity = [300, 300];
 	var defaultJumpVelocity = [-400, -400];
@@ -116,6 +126,9 @@
 		}
 
 		// Setup Bow and Arrows
+		for (let thePlayer of player) {
+			thePlayer.bow = this.add.sprite(thePlayer.x, thePlayer.y, 'bow-n-arrow');
+		}
 		arrows = this.physics.add.group();
 
 		// Setup Physics Colliding & Overlapping
@@ -146,6 +159,9 @@
 				'arrowIcons': this.add.group(),
 				'heartIcon': this.add.image(thePlayer.statePositionX, 50, 'heart'),
 				'healthText': this.add.text(thePlayer.statePositionX - 10, 50 - 14, '', {fontSize: '33px', fill: '#ffffff'})
+			}
+			for (var i = 0; i < thePlayer.arrowsAmout; i++) {
+				thePlayer.stateDisplay.arrowIcons.create(thePlayer.statePositionX, i * 50 + 120, 'arrow-icon').scaleX *= thePlayer.arrowIconDirection;
 			}
 			updateHealthDisplay(thePlayer);
 			updateArrowIcons(thePlayer);
@@ -234,8 +250,14 @@
 				thePlayer.anims.play('front', true);
 			}
 
+			for (let thePlayer of player) {
+				thePlayer.bow.setPosition(thePlayer.x, thePlayer.y);
+				thePlayer.bow.rotation = thePlayer.aimingDirection;
+			}
+
 			for (let theArrow of arrows.getChildren()) {
 				theArrow.rotation = Math.atan(theArrow.body.velocity.y / theArrow.body.velocity.x);
+				if (theArrow.body.velocity.x < 0) theArrow.rotation += Math.PI;
 			}
 		}
 	}
@@ -255,6 +277,14 @@
 			if (keyCode == thePlayer.controlling.shoot.keyCode && thePlayer.arrowsAmout > 0) {
 				shootArrow(thePlayer);
 			}
+			if (keyCode == thePlayer.controlling.aim.right.keyCode) thePlayer.aimingDirection = 0;
+			if (keyCode == thePlayer.controlling.aim.righttop.keyCode) thePlayer.aimingDirection = -1 * Math.PI / 4;
+			if (keyCode == thePlayer.controlling.aim.top.keyCode) thePlayer.aimingDirection = -1 * Math.PI / 2;
+			if (keyCode == thePlayer.controlling.aim.lefttop.keyCode) thePlayer.aimingDirection = -3 * Math.PI / 4;
+			if (keyCode == thePlayer.controlling.aim.left.keyCode) thePlayer.aimingDirection = Math.PI;
+			if (keyCode == thePlayer.controlling.aim.rightbottom.keyCode) thePlayer.aimingDirection = Math.PI / 4;
+			if (keyCode == thePlayer.controlling.aim.bottom.keyCode) thePlayer.aimingDirection = Math.PI / 2;
+			if (keyCode == thePlayer.controlling.aim.leftbottom.keyCode) thePlayer.aimingDirection = 3 * Math.PI / 4;
 		}
 	}
 
@@ -277,9 +307,11 @@
 		thePlayer.stateDisplay.healthText.setText('' + thePlayer.health);
 	}
 	function updateArrowIcons(thePlayer) {
-		thePlayer.stateDisplay.arrowIcons.clear();
+		thePlayer.stateDisplay.arrowIcons.children.iterate(function (child) {
+			child.setVisible(false);
+		});
 		for (var i = 0; i < thePlayer.arrowsAmout; i++) {
-			thePlayer.stateDisplay.arrowIcons.create(thePlayer.statePositionX, i * 50 + 120, 'arrow-icon').scaleX *= thePlayer.arrowIconDirection;
+			thePlayer.stateDisplay.arrowIcons.getChildren()[i].setVisible(true);
 		}
 	}
 
