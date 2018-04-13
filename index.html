@@ -79,6 +79,7 @@
 			'rightbottom': new Phaser.Input.Keyboard.Key(77)	// key: M
 		}
 	}];
+	var defaultFps = 60;
 	var defaultWalkVelocity = [300, 300];
 	var defaultJumpVelocity = [-400, -400];
 	var defaultStatePositionX = [80, 720];
@@ -90,10 +91,14 @@
 
 	//----------------------------------------------------------------
 
+	var testGetHit = false;
+
 	var platforms;
 	var player = [];
 	var arrows;
+	var stuckedArrows;
 	var arrowSpeed = defaultArrowSpeed;
+	var playerArrowCollider;
 	var keys = {};
 	var cursors;
 	var mouseKeyIsDown = false;
@@ -101,7 +106,7 @@
 
 	var game = new Phaser.Game(config);
 
-	function preload() {
+	function preload () {
 		this.load.image('ground', 'src/game/img/ground.png');
 		this.load.image('heart', 'src/game/img/heart.png');
 		this.load.image('arrow-icon', 'src/game/img/arrow-icon.png');
@@ -111,10 +116,11 @@
 		this.load.spritesheet('player-white', 'src/game/img/player-white.png', {frameWidth: 29, frameHeight: 60});
 	}
 
-	function create() {
+	function create () {
 		platforms = this.physics.add.staticGroup();
 
 		platforms.create(400, 575, 'ground');
+		platforms.setDepth(1);
 
 		// Setup Players
 		player[0] = this.physics.add.sprite(50, 500, 'player-white');
@@ -123,23 +129,29 @@
 		for (let thePlayer of player) {
 			thePlayer.setCollideWorldBounds(true);
 			thePlayer.setBounce(0);
+			thePlayer.setDepth(1);
 		}
 
 		// Setup Bow and Arrows
 		for (let thePlayer of player) {
 			thePlayer.bow = this.add.sprite(thePlayer.x, thePlayer.y, 'bow-n-arrow');
+			thePlayer.bow.setDepth(1);
 		}
 		arrows = this.physics.add.group();
+		stuckedArrows = this.physics.add.staticGroup();
 
 		// Setup Physics Colliding & Overlapping
 		for (let thePlayer of player) {
 			this.physics.add.collider(thePlayer, platforms);
+			this.physics.add.collider(arrows, platforms, arrowStuck, null, this);
+			playerArrowCollider = this.physics.add.overlap(thePlayer, arrows, getHit, null, this);
 		}
 		for (let i = 0; i < player.length - 1; i++) {
 			for (let j = i + 1; j < player.length; j++) {
 				this.physics.add.collider(player[i], player[j])
 			}
 		}
+		this.physics.add.collider(arrows, platforms);
 
 		// Setup Players' Properties
 		for (let i = 0; i < player.length; i++) {
@@ -211,7 +223,7 @@
 		};
 	}
 
-	function update() {
+	function update () {
 		// Players' Movement
 		// Players' Jump at func 'keyTrigger'
 		for (let thePlayer of player) {
@@ -250,24 +262,43 @@
 				thePlayer.anims.play('front', true);
 			}
 
+			// Bows Direction
 			for (let thePlayer of player) {
-				thePlayer.bow.setPosition(thePlayer.x, thePlayer.y);
+				let theX = thePlayer.x + ( thePlayer.body.velocity.x / defaultFps );
+				let theY = thePlayer.y + ( thePlayer.body.velocity.y / defaultFps );
+				thePlayer.bow.setPosition(theX, theY);
 				thePlayer.bow.rotation = thePlayer.aimingDirection;
 			}
-
-			for (let theArrow of arrows.getChildren()) {
-				theArrow.rotation = Math.atan(theArrow.body.velocity.y / theArrow.body.velocity.x);
-				if (theArrow.body.velocity.x < 0) theArrow.rotation += Math.PI;
-			}
 		}
+
+		// Arrows Direction and LooseTime Count
+		arrows.children.iterate(function (child) {
+			child.rotation = Math.atan(child.body.velocity.y / child.body.velocity.x);
+			if (child.body.velocity.x < 0) child.rotation += Math.PI;
+			child.loosedTime += 1;
+		});
+
+		// Stucked Arrows
+		stuckedArrows.children.iterate(function (child) {
+			let velocityCompensatoryX = 0, velocityCompensatoryY = 0;
+			if (child.stuckedType == 1) {
+				velocityCompensatoryX = child.stuckOn.body.velocity.x / defaultFps;
+				velocityCompensatoryY = child.stuckOn.body.velocity.y / defaultFps;
+			}
+			child.x = child.stuckOn.x + child.stuckPosition.x + velocityCompensatoryX;
+			child.y = child.stuckOn.y + child.stuckPosition.y + velocityCompensatoryY;
+		});
+
+		 // if (testGetHit) { console.log('update getHit: true'); testGetHit = false }
+		 // else { console.log('update getHit: false'); }
 	}
 
 	// ===== Tools Functions =====
-	function isKeyDown(keyCode) {
+	function isKeyDown (keyCode) {
 		if (keys[keyCode]) return true ; else return false;
 	}
 
-	function keyTrigger(keyCode) {
+	function keyTrigger (keyCode) {
 		for (let thePlayer of player) {
 			// Player Jump
 			if (keyCode == thePlayer.controlling.jump.keyCode && thePlayer.body.touching.down && !isKeyDown(keyCode)) {	// Player Jump Detecting
@@ -289,24 +320,52 @@
 	}
 
 	// ===== Game Functions =====
-	function getHit(thePlayer) {
-		thePlayer.health -= 1;
-		updateHealthDisplay(thePlayer);
-	}
-	function shootArrow(thePlayer) {
-		thePlayer.arrowsAmout -= 1;
+	function shootArrow (thePlayer) {
+		thePlayer.arrowsAmout += -1;
 		updateArrowIcons(thePlayer);
-		arrows.create(thePlayer.x, thePlayer.y, 'arrow');
-		arrows.getChildren()[arrows.getLength() - 1].rotation = thePlayer.aimingDirection;
+		let theX = thePlayer.x + ( thePlayer.body.velocity.x / defaultFps );
+		let theY = thePlayer.y + ( thePlayer.body.velocity.y / defaultFps );
+		let theArrow = arrows.create(theX, theY, 'arrow');
+		theArrow.setCollideWorldBounds(true);
+		theArrow.setBounce(0.3);
+		theArrow.from = thePlayer;
+		theArrow.rotation = thePlayer.aimingDirection;
 		let velocityX = Math.round(arrowSpeed * Math.cos(thePlayer.aimingDirection), 3);
 		let velocityY = Math.round(arrowSpeed * Math.sin(thePlayer.aimingDirection), 3);
-		arrows.getChildren()[arrows.getLength() - 1].setVelocity(velocityX, velocityY);
+		theArrow.setVelocity(velocityX, velocityY);
+		theArrow.loosedTime = 0;	// measure in frame
+	}
+	function getHit (thePlayer, theArrow) {
+		// console.log('getHit');
+		// testGetHit = true;
+		if (theArrow.from == thePlayer) theArrow.loosedTime += -1;
+
+		if (theArrow.loosedTime > 0 || theArrow.from != thePlayer) {
+			thePlayer.health += -1;
+			updateHealthDisplay(thePlayer);
+			arrows.remove(theArrow);
+			theArrow.body.allowGravity = false;
+			theArrow.setVelocity(0, 0);
+			theArrow.stuckedType = 1;		// 0 for static object, 1 for non-static object
+			theArrow.stuckOn = thePlayer;
+			theArrow.stuckPosition = { x: theArrow.x - thePlayer.x, y: theArrow.y - thePlayer.y };
+			stuckedArrows.add(theArrow);
+		}
+	}
+	function arrowStuck (theArrow, thePlatform) {
+		arrows.remove(theArrow);
+		theArrow.body.allowGravity = false;
+		theArrow.setVelocity(0, 0);
+		theArrow.stuckedType = 0;		// 0 for static object, 1 for non-static object
+		theArrow.stuckOn = thePlatform;
+		theArrow.stuckPosition = {x: theArrow.x - thePlatform.x, y: theArrow.y - thePlatform.y};
+		stuckedArrows.add(theArrow);
 	}
 
-	function updateHealthDisplay(thePlayer) {
+	function updateHealthDisplay (thePlayer) {
 		thePlayer.stateDisplay.healthText.setText('' + thePlayer.health);
 	}
-	function updateArrowIcons(thePlayer) {
+	function updateArrowIcons (thePlayer) {
 		thePlayer.stateDisplay.arrowIcons.children.iterate(function (child) {
 			child.setVisible(false);
 		});
