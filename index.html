@@ -79,15 +79,17 @@
 			'rightbottom': new Phaser.Input.Keyboard.Key(77)	// key: M
 		}
 	}];
-	var defaultFps = 60;
-	var defaultWalkVelocity = [300, 300];
-	var defaultJumpVelocity = [-400, -400];
-	var defaultStatePositionX = [80, 720];
-	var defaultHealth = [5, 5];
-	var defaultArrowsAmout = [3, 3];
-	var defaultArrowIconDirection = [1, -1];
-	var defaultAimingDirection = [0, Math.PI];				// right, left
-	var defaultArrowSpeed = 1000;
+	const defaultFps = 60;
+	const defaultWalkVelocity = [300, 300];
+	const defaultJumpVelocity = [-400, -400];
+	const defaultStatePositionX = [80, 720];
+	const defaultHealth = [5, 5];
+	const defaultArrowsAmount = [3, 3];
+	const defaultMaxArrowsAmount = [3, 3];
+	const defaultArrowIconDirection = [1, -1];
+	const defaultAimingDirection = [0, Math.PI];				// right, left
+	const defaultArrowSpeed = 1000;
+	const defaultArrowOnBodyCollectingTimeCost = [1.3, 1.3];				// measure in sec.
 
 	//----------------------------------------------------------------
 
@@ -160,9 +162,12 @@
 			player[i].jumpVelocity = defaultJumpVelocity[i];
 			player[i].statePositionX = defaultStatePositionX[i];
 			player[i].health = defaultHealth[i];
-			player[i].arrowsAmout = defaultArrowsAmout[i];
+			player[i].arrowsAmount = defaultArrowsAmount[i];
+			player[i].maxArrowsAmount = defaultMaxArrowsAmount[i];
 			player[i].arrowIconDirection = defaultArrowIconDirection[i];
 			player[i].aimingDirection = defaultAimingDirection[i];
+			player[i].arrowOnBodyCollectingTimeCost = defaultArrowOnBodyCollectingTimeCost[i];
+			player[i].collectingArrowOnBodyTime = 0;
 		}
 
 		// Setup Player State Display
@@ -172,7 +177,7 @@
 				'heartIcon': this.add.image(thePlayer.statePositionX, 50, 'heart'),
 				'healthText': this.add.text(thePlayer.statePositionX - 10, 50 - 14, '', {fontSize: '33px', fill: '#ffffff'})
 			}
-			for (var i = 0; i < thePlayer.arrowsAmout; i++) {
+			for (var i = 0; i < thePlayer.maxArrowsAmount; i++) {
 				thePlayer.stateDisplay.arrowIcons.create(thePlayer.statePositionX, i * 50 + 120, 'arrow-icon').scaleX *= thePlayer.arrowIconDirection;
 			}
 			updateHealthDisplay(thePlayer);
@@ -204,10 +209,11 @@
 
 		// Setup Input Event
 		window.onkeydown = function (e) {
-			keyTrigger(e.keyCode);
+			keyDownTrigger(e.keyCode);
 			keys[e.keyCode] = true;
 		};
 		window.onkeyup = function (e) {
+			keyUpTrigger(e.keyCode);
 			keys[e.keyCode] = undefined;
 		};
 		window.onmousedown = function (e) {
@@ -230,12 +236,10 @@
 			if (thePlayer.health < 1) continue;
 			if (isKeyDown(thePlayer.controlling.down.keyCode) && thePlayer.body.touching.down) {
 				thePlayer.setVelocityX(0);
-				thePlayer.scaleX = Math.abs(thePlayer.scaleX);
 				thePlayer.anims.play('crouch', true);
 			}
 			else if (isKeyDown(thePlayer.controlling.left.keyCode) && isKeyDown(thePlayer.controlling.right.keyCode)) {
 				thePlayer.setVelocityX(0);
-				thePlayer.scaleX = Math.abs(thePlayer.scaleX);
 				thePlayer.anims.play('front', true);
 			}
 			else if (isKeyDown(thePlayer.controlling.left.keyCode)) {
@@ -258,8 +262,20 @@
 			}
 			else {
 				thePlayer.setVelocityX(0);
-				thePlayer.scaleX = Math.abs(thePlayer.scaleX);
 				thePlayer.anims.play('front', true);
+			}
+			if (isKeyDown(thePlayer.controlling.up.keyCode) && thePlayer.body.touching.down && thePlayer.arrowsAmount < thePlayer.maxArrowsAmount) {
+				let arrowsOnBodyCount = 0;
+				stuckedArrows.children.iterate(function (child) {
+					if (child.stuckOn == thePlayer) {
+						arrowsOnBodyCount += 1;
+					}
+				});
+				if (arrowsOnBodyCount > 0) {
+					thePlayer.setVelocity(0);
+					thePlayer.anims.play('crouch', true);
+					collectArrowOnBody(thePlayer);
+				}
 			}
 
 			// Bows Direction
@@ -298,14 +314,14 @@
 		if (keys[keyCode]) return true ; else return false;
 	}
 
-	function keyTrigger (keyCode) {
+	function keyDownTrigger (keyCode) {
 		for (let thePlayer of player) {
 			// Player Jump
 			if (keyCode == thePlayer.controlling.jump.keyCode && thePlayer.body.touching.down && !isKeyDown(keyCode)) {	// Player Jump Detecting
 				thePlayer.setVelocityY(thePlayer.jumpVelocity);
 			}
 			// Player shoot
-			if (keyCode == thePlayer.controlling.shoot.keyCode && thePlayer.arrowsAmout > 0) {
+			if (keyCode == thePlayer.controlling.shoot.keyCode && thePlayer.arrowsAmount > 0) {
 				shootArrow(thePlayer);
 			}
 			if (keyCode == thePlayer.controlling.aim.right.keyCode) thePlayer.aimingDirection = 0;
@@ -318,10 +334,17 @@
 			if (keyCode == thePlayer.controlling.aim.leftbottom.keyCode) thePlayer.aimingDirection = 3 * Math.PI / 4;
 		}
 	}
+	function keyUpTrigger (keyCode) {
+		for (let thePlayer of player) {
+			if (keyCode == thePlayer.controlling.up.keyCode) {
+				thePlayer.collectingArrowOnBodyTime = 0;
+			}
+		}
+	}
 
 	// ===== Game Functions =====
 	function shootArrow (thePlayer) {
-		thePlayer.arrowsAmout += -1;
+		thePlayer.arrowsAmount += -1;
 		updateArrowIcons(thePlayer);
 		let theX = thePlayer.x + ( thePlayer.body.velocity.x / defaultFps );
 		let theY = thePlayer.y + ( thePlayer.body.velocity.y / defaultFps );
@@ -361,6 +384,23 @@
 		theArrow.stuckPosition = {x: theArrow.x - thePlatform.x, y: theArrow.y - thePlatform.y};
 		stuckedArrows.add(theArrow);
 	}
+	function collectArrowOnBody (thePlayer) {
+		thePlayer.collectingArrowOnBodyTime += 1;
+		console.log(thePlayer.collectingArrowOnBodyTime);
+		if (thePlayer.collectingArrowOnBodyTime > thePlayer.arrowOnBodyCollectingTimeCost * defaultFps) {
+			let done = false;
+			thePlayer.collectingArrowOnBodyTime = 0;
+			for (let theArrow of stuckedArrows.getChildren()) {
+				if (theArrow.stuckOn == thePlayer && !done) {
+					theArrow.setVisible(false);
+					stuckedArrows.remove(theArrow);
+					thePlayer.arrowsAmount += 1;
+					updateArrowIcons(thePlayer);
+					done = true;
+				}
+			}
+		}
+	}
 
 	function updateHealthDisplay (thePlayer) {
 		thePlayer.stateDisplay.healthText.setText('' + thePlayer.health);
@@ -369,7 +409,7 @@
 		thePlayer.stateDisplay.arrowIcons.children.iterate(function (child) {
 			child.setVisible(false);
 		});
-		for (var i = 0; i < thePlayer.arrowsAmout; i++) {
+		for (var i = 0; i < thePlayer.arrowsAmount; i++) {
 			thePlayer.stateDisplay.arrowIcons.getChildren()[i].setVisible(true);
 		}
 	}
