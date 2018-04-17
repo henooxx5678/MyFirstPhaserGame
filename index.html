@@ -44,7 +44,7 @@
 
 	//----------------------------------------------------------------
 
-	var defaultControlling = [{
+	const defaultControlling = [{
 		'up': new Phaser.Input.Keyboard.Key(87),				// key: W
 		'down': new Phaser.Input.Keyboard.Key(83),				// key: S
 		'left': new Phaser.Input.Keyboard.Key(65),				// key: A
@@ -59,7 +59,9 @@
 			'lefttop': new Phaser.Input.Keyboard.Key(73),		// key: I
 			'righttop': new Phaser.Input.Keyboard.Key(80),		// key: P
 			'leftbottom': new Phaser.Input.Keyboard.Key(188),	// key: ,
-			'rightbottom': new Phaser.Input.Keyboard.Key(191)	// key: /
+			'rightbottom': new Phaser.Input.Keyboard.Key(191),	// key: /
+			'rotateCW': new Phaser.Input.Keyboard.Key(69),		// key: E
+			'rotateACW': new Phaser.Input.Keyboard.Key(81)		// key: Q
 		}
 	}, {
 		'up': new Phaser.Input.Keyboard.Key(104),				// key: num8
@@ -76,7 +78,9 @@
 			'lefttop': new Phaser.Input.Keyboard.Key(84),		// key: T
 			'righttop': new Phaser.Input.Keyboard.Key(85),		// key: U
 			'leftbottom': new Phaser.Input.Keyboard.Key(66),	// key: B
-			'rightbottom': new Phaser.Input.Keyboard.Key(77)	// key: M
+			'rightbottom': new Phaser.Input.Keyboard.Key(77),	// key: M
+			'rotateCW': new Phaser.Input.Keyboard.Key(105),		// key: num9
+			'rotateACW': new Phaser.Input.Keyboard.Key(103)		// key: num7
 		}
 	}];
 	const defaultFps = 60;
@@ -88,9 +92,10 @@
 	const defaultMaxArrowsAmount = [3, 3];
 	const defaultArrowIconDirection = [1, -1];
 	const defaultAimingDirection = [0, Math.PI];				// right, left
-	const defaultArrowSpeed = 1000;
-	const defaultArrowOnBodyCollectingTimeCost = [1, 1];				// measure in sec.
+	const defaultAimingRotateSpeed = [0.03, 0.03];				// measure in radians per frame
+	const defaultArrowOnBodyCollectingTimeCost = [1, 1];		// measure in sec.
 	const defaultArrowOnBodyCollectingCircleRadius = [13, 13];
+	const defaultArrowSpeed = 1000;
 
 	//----------------------------------------------------------------
 
@@ -167,6 +172,7 @@
 			player[i].maxArrowsAmount = defaultMaxArrowsAmount[i];
 			player[i].arrowIconDirection = defaultArrowIconDirection[i];
 			player[i].aimingDirection = defaultAimingDirection[i];
+			player[i].aimingRotateSpeed = defaultAimingRotateSpeed[i];
 			player[i].arrowOnBodyCollecting = {
 				'done': false,
 				'timeCost': defaultArrowOnBodyCollectingTimeCost[i],
@@ -270,6 +276,16 @@
 				thePlayer.setVelocityX(0);
 				thePlayer.anims.play('front', true);
 			}
+
+			if (isKeyDown(thePlayer.controlling.aim.rotateCW.keyCode) && isKeyDown(thePlayer.controlling.aim.rotateACW.keyCode)) {}
+			else if (isKeyDown(thePlayer.controlling.aim.rotateCW.keyCode)) {
+				thePlayer.aimingDirection += thePlayer.aimingRotateSpeed;
+			}
+			else if (isKeyDown(thePlayer.controlling.aim.rotateACW.keyCode)) {
+				thePlayer.aimingDirection += -1 * thePlayer.aimingRotateSpeed;
+			}
+
+			// Arrow On Body Collecting
 			if (isKeyDown(thePlayer.controlling.up.keyCode) && thePlayer.body.touching.down && thePlayer.arrowsAmount < thePlayer.maxArrowsAmount) {
 				let arrowsOnBodyCount = 0;
 				stuckedArrows.children.iterate(function (child) {
@@ -285,18 +301,32 @@
 			}
 
 			// Bows & their Direction
-			for (let thePlayer of player) {
-				let theX = thePlayer.x + ( thePlayer.body.velocity.x / defaultFps );
-				let theY = thePlayer.y + ( thePlayer.body.velocity.y / defaultFps );
-				thePlayer.bow.setPosition(theX, theY);
-				thePlayer.bow.rotation = thePlayer.aimingDirection;
-				if (thePlayer.arrowOnBodyCollecting.time > 0) {
-					thePlayer.bow.setVisible(false);
-					thePlayer.arrowOnBodyCollecting.circle.setVisible(true);
-					thePlayer.arrowOnBodyCollecting.circle.setDepth(2);
-				} else {
-					thePlayer.bow.setVisible(true);
-					// thePlayer.arrowOnBodyCollecting.circle.setVisible(false);
+			let theX = thePlayer.x + ( thePlayer.body.velocity.x / defaultFps );
+			let theY = thePlayer.y + ( thePlayer.body.velocity.y / defaultFps );
+			thePlayer.bow.setPosition(theX, theY);
+			thePlayer.bow.rotation = thePlayer.aimingDirection;
+			if (thePlayer.arrowOnBodyCollecting.time > 0) {
+				thePlayer.bow.setVisible(false);
+				thePlayer.arrowOnBodyCollecting.circle.setVisible(true);
+				thePlayer.arrowOnBodyCollecting.circle.setDepth(2);
+			} else {
+				thePlayer.bow.setVisible(true);
+				thePlayer.arrowOnBodyCollecting.circle.setVisible(false);
+			}
+
+			// players collect arrow on ground
+			if (thePlayer.arrowsAmount < thePlayer.maxArrowsAmount) {
+				for (let theArrow of stuckedArrows.getChildren()) {
+					let minX = thePlayer.x - 10;
+					let maxX = thePlayer.y + 10;
+					let minY = thePlayer.y - 20;
+					let maxY = thePlayer.y + 20;
+					if (theArrow.stuckedType == 0 && theArrow.x > minX && theArrow.x < maxX && theArrow.y > minY && thePlayer.y < maxY) {
+						theArrow.setVisible(false);
+						stuckedArrows.remove(theArrow);
+						thePlayer.arrowsAmount += 1;
+						updateArrowIcons(thePlayer);
+					}
 				}
 			}
 		}
