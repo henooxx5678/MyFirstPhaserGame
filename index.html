@@ -90,6 +90,7 @@
 	const defaultAimingDirection = [0, Math.PI];				// right, left
 	const defaultArrowSpeed = 1000;
 	const defaultArrowOnBodyCollectingTimeCost = [1.3, 1.3];				// measure in sec.
+	const defaultArrowOnBodyCollectingCircleRadius = [10, 10];
 
 	//----------------------------------------------------------------
 
@@ -119,6 +120,7 @@
 	}
 
 	function create () {
+		console.log(this);
 		platforms = this.physics.add.staticGroup();
 
 		platforms.create(400, 575, 'ground');
@@ -166,8 +168,12 @@
 			player[i].maxArrowsAmount = defaultMaxArrowsAmount[i];
 			player[i].arrowIconDirection = defaultArrowIconDirection[i];
 			player[i].aimingDirection = defaultAimingDirection[i];
-			player[i].arrowOnBodyCollectingTimeCost = defaultArrowOnBodyCollectingTimeCost[i];
-			player[i].collectingArrowOnBodyTime = 0;
+			player[i].arrowOnBodyCollecting = {
+				'timeCost': defaultArrowOnBodyCollectingTimeCost[i],
+				'time': 0,
+				'circle': this.add.graphics(player[i].x, player[i].y),
+				'circleRadius': defaultArrowOnBodyCollectingCircleRadius[i]
+			}
 		}
 
 		// Setup Player State Display
@@ -284,6 +290,14 @@
 				let theY = thePlayer.y + ( thePlayer.body.velocity.y / defaultFps );
 				thePlayer.bow.setPosition(theX, theY);
 				thePlayer.bow.rotation = thePlayer.aimingDirection;
+				if (thePlayer.arrowOnBodyCollecting.time > 0) {
+					thePlayer.bow.setVisible(false);
+					thePlayer.arrowOnBodyCollecting.circle.setVisible(true);
+					thePlayer.arrowOnBodyCollecting.circle.setDepth(2);
+				} else {
+					thePlayer.bow.setVisible(true);
+					// thePlayer.arrowOnBodyCollecting.circle.setVisible(false);
+				}
 			}
 		}
 
@@ -337,7 +351,7 @@
 	function keyUpTrigger (keyCode) {
 		for (let thePlayer of player) {
 			if (keyCode == thePlayer.controlling.up.keyCode) {
-				thePlayer.collectingArrowOnBodyTime = 0;
+				thePlayer.arrowOnBodyCollecting.time = 0;
 			}
 		}
 	}
@@ -385,11 +399,16 @@
 		stuckedArrows.add(theArrow);
 	}
 	function collectArrowOnBody (thePlayer) {
-		thePlayer.collectingArrowOnBodyTime += 1;
-		console.log(thePlayer.collectingArrowOnBodyTime);
-		if (thePlayer.collectingArrowOnBodyTime > thePlayer.arrowOnBodyCollectingTimeCost * defaultFps) {
+		thePlayer.arrowOnBodyCollecting.time += 1;
+		let theRadius = thePlayer.arrowOnBodyCollecting.circleRadius;
+		let startAngle = -1 * Math.PI / 2;
+		let progressingState = thePlayer.arrowOnBodyCollecting.time / thePlayer.arrowOnBodyCollecting.timeCost;
+		let endAngle = 2 * Math.PI * progressingState + startAngle;
+		thePlayer.arrowOnBodyCollecting.circle.lineStyle(3, 0x999999, 0.7);
+		thePlayer.arrowOnBodyCollecting.circle.arc(0, 0, theRadius, startAngle, endAngle, false);
+		if (thePlayer.arrowOnBodyCollecting.time > thePlayer.arrowOnBodyCollecting.timeCost * defaultFps) {
 			let done = false;
-			thePlayer.collectingArrowOnBodyTime = 0;
+			thePlayer.arrowOnBodyCollecting.time = 0;
 			for (let theArrow of stuckedArrows.getChildren()) {
 				if (theArrow.stuckOn == thePlayer && !done) {
 					theArrow.setVisible(false);
