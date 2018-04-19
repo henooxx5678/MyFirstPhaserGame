@@ -50,37 +50,37 @@
 		'left': new Phaser.Input.Keyboard.Key(65),				// key: A
 		'right': new Phaser.Input.Keyboard.Key(68),				// key: D
 		'jump': new Phaser.Input.Keyboard.Key(32),				// key: Space
-		'shoot': new Phaser.Input.Keyboard.Key(76),				// key: L
+		'shoot': new Phaser.Input.Keyboard.Key(221),				// key: ]
 		'aim': {
-			'left': new Phaser.Input.Keyboard.Key(75),			// key: K
-			'right': new Phaser.Input.Keyboard.Key(186),		// key: ;
-			'top': new Phaser.Input.Keyboard.Key(79),			// key: O
-			'bottom': new Phaser.Input.Keyboard.Key(190),		// key: .
-			'lefttop': new Phaser.Input.Keyboard.Key(73),		// key: I
-			'righttop': new Phaser.Input.Keyboard.Key(80),		// key: P
-			'leftbottom': new Phaser.Input.Keyboard.Key(188),	// key: ,
-			'rightbottom': new Phaser.Input.Keyboard.Key(191),	// key: /
-			'rotateCW': new Phaser.Input.Keyboard.Key(69),		// key: E
-			'rotateACW': new Phaser.Input.Keyboard.Key(81)		// key: Q
+			'left': new Phaser.Input.Keyboard.Key(0),				// key:
+			'right': new Phaser.Input.Keyboard.Key(0),			// key:
+			'top': new Phaser.Input.Keyboard.Key(0),				// key:
+			'bottom': new Phaser.Input.Keyboard.Key(0),			// key:
+			'lefttop': new Phaser.Input.Keyboard.Key(0),		// key:
+			'righttop': new Phaser.Input.Keyboard.Key(0),		// key:
+			'leftbottom': new Phaser.Input.Keyboard.Key(0),	// key:
+			'rightbottom': new Phaser.Input.Keyboard.Key(0),	// key:
+			'rotateCW': new Phaser.Input.Keyboard.Key(220),		// key: \
+			'rotateACW': new Phaser.Input.Keyboard.Key(219)		// key: [
 		}
 	}, {
-		'up': new Phaser.Input.Keyboard.Key(104),				// key: num8
-		'down': new Phaser.Input.Keyboard.Key(101),				// key: num5
-		'left': new Phaser.Input.Keyboard.Key(100),				// key: num4
-		'right': new Phaser.Input.Keyboard.Key(102),			// key: num6
-		'jump': new Phaser.Input.Keyboard.Key(96),				// key: num0
-		'shoot': new Phaser.Input.Keyboard.Key(72),				// key: H
+		'up': new Phaser.Input.Keyboard.Key(80),					// key: P
+		'down': new Phaser.Input.Keyboard.Key(186),				// key: ;
+		'left': new Phaser.Input.Keyboard.Key(76),				// key: l
+		'right': new Phaser.Input.Keyboard.Key(222),			// key: '
+		'jump': new Phaser.Input.Keyboard.Key(188),				// key: ,
+		'shoot': new Phaser.Input.Keyboard.Key(82),				// key: R
 		'aim': {
-			'left': new Phaser.Input.Keyboard.Key(71),			// key: G
-			'right': new Phaser.Input.Keyboard.Key(74),			// key: J
-			'top': new Phaser.Input.Keyboard.Key(89),			// key: Y
-			'bottom': new Phaser.Input.Keyboard.Key(78),		// key: N
-			'lefttop': new Phaser.Input.Keyboard.Key(84),		// key: T
-			'righttop': new Phaser.Input.Keyboard.Key(85),		// key: U
-			'leftbottom': new Phaser.Input.Keyboard.Key(66),	// key: B
-			'rightbottom': new Phaser.Input.Keyboard.Key(77),	// key: M
-			'rotateCW': new Phaser.Input.Keyboard.Key(105),		// key: num9
-			'rotateACW': new Phaser.Input.Keyboard.Key(103)		// key: num7
+			'left': new Phaser.Input.Keyboard.Key(0),				// key:
+			'right': new Phaser.Input.Keyboard.Key(0),			// key:
+			'top': new Phaser.Input.Keyboard.Key(0),				// key:
+			'bottom': new Phaser.Input.Keyboard.Key(0),			// key:
+			'lefttop': new Phaser.Input.Keyboard.Key(0),		// key:
+			'righttop': new Phaser.Input.Keyboard.Key(0),		// key:
+			'leftbottom': new Phaser.Input.Keyboard.Key(0),	// key:
+			'rightbottom': new Phaser.Input.Keyboard.Key(0),// key:
+			'rotateCW': new Phaser.Input.Keyboard.Key(84),	// key: T
+			'rotateACW': new Phaser.Input.Keyboard.Key(69)	// key: E
 		}
 	}];
 	const defaultFps = 60;
@@ -93,9 +93,12 @@
 	const defaultArrowIconDirection = [1, -1];
 	const defaultAimingDirection = [0, Math.PI];				// right, left
 	const defaultAimingRotateSpeed = [0.03, 0.03];				// measure in radians per frame
+	const defaultPickingRange = [ { x: 10, y: 30 }, {x:10, y: 30 } ];
 	const defaultArrowOnBodyCollectingTimeCost = [1, 1];		// measure in sec.
 	const defaultArrowOnBodyCollectingCircleRadius = [13, 13];
 	const defaultArrowSpeed = 1000;
+	const defaultArrowFloatingAmplitudeY = 10;
+	const defaultArrowFloatingCycleTime = 1;								// measure in sec.
 
 	//----------------------------------------------------------------
 
@@ -105,6 +108,7 @@
 	var player = [];
 	var arrows;
 	var stuckedArrows;
+	var pickableArrows;
 	var arrowSpeed = defaultArrowSpeed;
 	var playerArrowCollider;
 	var keys = {};
@@ -146,7 +150,8 @@
 			thePlayer.bow.setDepth(1);
 		}
 		arrows = this.physics.add.group();
-		stuckedArrows = this.physics.add.staticGroup();
+		stuckedArrows = this.physics.add.group();
+		pickableArrows = this.physics.add.group();
 
 		// Setup Physics Colliding & Overlapping
 		for (let thePlayer of player) {
@@ -173,6 +178,7 @@
 			player[i].arrowIconDirection = defaultArrowIconDirection[i];
 			player[i].aimingDirection = defaultAimingDirection[i];
 			player[i].aimingRotateSpeed = defaultAimingRotateSpeed[i];
+			player[i].pickingRange = defaultPickingRange[i];
 			player[i].arrowOnBodyCollecting = {
 				'done': false,
 				'timeCost': defaultArrowOnBodyCollectingTimeCost[i],
@@ -238,7 +244,9 @@
 			let canvasRect = game.canvas.getBoundingClientRect();
 			mousePosition.x = e.clientX - canvasRect.left;
 			mousePosition.y = e.clientY - canvasRect.top;
-		};
+		}
+
+		spawnPickableArrow(400, 450, true);
 	}
 
 	function update () {
@@ -314,19 +322,13 @@
 				thePlayer.arrowOnBodyCollecting.circle.setVisible(false);
 			}
 
-			// players collect arrow on ground
+			// players picking arrow
 			if (thePlayer.arrowsAmount < thePlayer.maxArrowsAmount) {
 				for (let theArrow of stuckedArrows.getChildren()) {
-					let minX = thePlayer.x - 10;
-					let maxX = thePlayer.y + 10;
-					let minY = thePlayer.y - 20;
-					let maxY = thePlayer.y + 20;
-					if (theArrow.stuckedType == 0 && theArrow.x > minX && theArrow.x < maxX && theArrow.y > minY && thePlayer.y < maxY) {
-						theArrow.setVisible(false);
-						stuckedArrows.remove(theArrow);
-						thePlayer.arrowsAmount += 1;
-						updateArrowIcons(thePlayer);
-					}
+					if (theArrow.stuckedType == 0) checkArrowPicking(thePlayer, theArrow, stuckedArrows);
+				}
+				for (let theArrow of pickableArrows.getChildren()) {
+					checkArrowPicking(thePlayer, theArrow, pickableArrows);
 				}
 			}
 		}
@@ -338,19 +340,40 @@
 			child.loosedTime += 1;
 		});
 
-		// Stucked Arrows
-		stuckedArrows.children.iterate(function (child) {
+		// Stucked Arrows Position
+		for (let theArrow of stuckedArrows.getChildren()) {
 			let velocityCompensatoryX = 0, velocityCompensatoryY = 0;
-			if (child.stuckedType == 1) {
-				velocityCompensatoryX = child.stuckOn.body.velocity.x / defaultFps;
-				velocityCompensatoryY = child.stuckOn.body.velocity.y / defaultFps;
+			if (theArrow.stuckedType == 1) {
+				velocityCompensatoryX = theArrow.stuckOn.body.velocity.x / defaultFps;
+				velocityCompensatoryY = theArrow.stuckOn.body.velocity.y / defaultFps;
 			}
-			child.x = child.stuckOn.x + child.stuckPosition.x + velocityCompensatoryX;
-			child.y = child.stuckOn.y + child.stuckPosition.y + velocityCompensatoryY;
-		});
+			theArrow.x = theArrow.stuckOn.x + theArrow.stuckPosition.x + velocityCompensatoryX;
+			theArrow.y = theArrow.stuckOn.y + theArrow.stuckPosition.y + velocityCompensatoryY;
+		}
 
-		 // if (testGetHit) { console.log('update getHit: true'); testGetHit = false }
-		 // else { console.log('update getHit: false'); }
+		// Floating Animations
+		for (let theArrow of pickableArrows.getChildren()) {
+			if (theArrow.floating == true) {
+				let theAcc = theArrow.floatingAmplitudeY / Math.pow(theArrow.floatingCycleTime/4, 2);
+				if (theArrow.y <= theArrow.centerY - theArrow.floatingAmplitudeY) {
+					theArrow.y = theArrow.centerY - theArrow.floatingAmplitudeY;
+					theArrow.body.velocity.y = 0;
+					theArrow.setAccelerationY(theAcc);
+				}
+				if (theArrow.y >= theArrow.centerY + theArrow.floatingAmplitudeY) {
+					theArrow.y = theArrow.centerY + theArrow.floatingAmplitudeY;
+					theArrow.body.velocity.y = 0;
+					theArrow.setAccelerationY(-1 * theAcc);
+				}
+				if (theArrow.y < theArrow.centerY) {				// when the arrow above its centerY
+					theArrow.setAccelerationY(theAcc);
+				}
+				if (theArrow.y > theArrow.centerY) {				// when the arrow below its centerY
+					theArrow.setAccelerationY(-1 * theAcc);
+				}
+			}
+		}
+
 	}
 
 	// ===== Tools Functions =====
@@ -430,6 +453,29 @@
 		theArrow.stuckPosition = {x: theArrow.x - thePlatform.x, y: theArrow.y - thePlatform.y};
 		stuckedArrows.add(theArrow);
 	}
+	function checkArrowPicking (thePlayer, theArrow, groupOfArrow) {
+		let minX = thePlayer.x - thePlayer.pickingRange.x;
+		let maxX = thePlayer.x + thePlayer.pickingRange.x;
+		let minY = thePlayer.y - thePlayer.pickingRange.y;
+		let maxY = thePlayer.y + thePlayer.pickingRange.y;
+		let arrowX, arrowY;
+		if (theArrow.floating == true) {
+			arrowX = theArrow.centerX;
+			arrowY = theArrow.centerY;
+		} else {
+			arrowX = theArrow.x;
+			arrowY = theArrow.y;
+		}
+		if (arrowX > minX && arrowX < maxX && arrowY > minY && arrowY < maxY) {
+			theArrow.setVisible(false);
+			groupOfArrow.remove(theArrow);
+			thePlayer.arrowsAmount += 1;
+			updateArrowIcons(thePlayer);
+			return true;
+		} else {
+			return false;
+		}
+	}
 	function collectArrowOnBody (thePlayer) {
 		thePlayer.arrowOnBodyCollecting.time += 1;
 		let theX = thePlayer.x + (thePlayer.body.velocity.x / defaultFps);
@@ -462,6 +508,19 @@
 				}
 			}
 		}
+	}
+
+	function spawnPickableArrow (x, y, floating) {
+		let theArrow = pickableArrows.create(x, y, 'arrow');
+		theArrow.rotation = -1 * Math.PI / 2;
+		theArrow.floating = floating;
+		theArrow.body.allowGravity = false;
+		theArrow.centerX = x;
+		theArrow.centerY = y;
+		theArrow.floatingAmplitudeY = defaultArrowFloatingAmplitudeY;
+		theArrow.y = theArrow.y - theArrow.floatingAmplitudeY;
+		theArrow.floatingCycleTime = defaultArrowFloatingCycleTime;
+		return theArrow;
 	}
 
 	function updateHealthDisplay (thePlayer) {
