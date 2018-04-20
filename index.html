@@ -98,11 +98,14 @@
 	const defaultArrowOnBodyCollectingCircleRadius = [13, 13];
 	const defaultArrowSpeed = 1000;
 	const defaultArrowFloatingAmplitudeY = 10;
-	const defaultArrowFloatingCycleTime = 1;								// measure in sec.
+	const defaultArrowFloatingCycleTime = 1;					// measure in sec.
+	const defaultPickableArrowRespawnTime = 5;					// measure in sec.
 
 	//----------------------------------------------------------------
 
-	var testGetHit = false;
+	var gameTime = {
+		secondCounter: 0
+	};
 
 	var platforms;
 	var player = [];
@@ -129,6 +132,12 @@
 	}
 
 	function create () {
+		this.time.addEvent({
+			delay: 1000,		// measure in milisec.
+			callback: timeSecondCount,
+			callbackScope: this
+		});
+
 		platforms = this.physics.add.staticGroup();
 
 		platforms.create(400, 575, 'ground');
@@ -152,6 +161,9 @@
 		arrows = this.physics.add.group();
 		stuckedArrows = this.physics.add.group();
 		pickableArrows = this.physics.add.group();
+		pickableArrows.respawning = {};
+		pickableArrows.respawnTime = {};
+		pickableArrows.respawnCounter = {};
 
 		// Setup Physics Colliding & Overlapping
 		for (let thePlayer of player) {
@@ -246,7 +258,7 @@
 			mousePosition.y = e.clientY - canvasRect.top;
 		}
 
-		spawnPickableArrow(400, 450, true);
+		spawnPickableArrow(400, 450, true, 0);
 	}
 
 	function update () {
@@ -325,10 +337,10 @@
 			// players picking arrow
 			if (thePlayer.arrowsAmount < thePlayer.maxArrowsAmount) {
 				for (let theArrow of stuckedArrows.getChildren()) {
-					if (theArrow.stuckedType == 0) checkArrowPicking(thePlayer, theArrow, stuckedArrows);
+					if (theArrow.stuckedType == 0) checkArrowPicking(thePlayer, theArrow, stuckedArrows, false);
 				}
 				for (let theArrow of pickableArrows.getChildren()) {
-					checkArrowPicking(thePlayer, theArrow, pickableArrows);
+					checkArrowPicking(thePlayer, theArrow, pickableArrows, true);
 				}
 			}
 		}
@@ -351,8 +363,9 @@
 			theArrow.y = theArrow.stuckOn.y + theArrow.stuckPosition.y + velocityCompensatoryY;
 		}
 
-		// Floating Animations
+		// Pickable Arrows
 		for (let theArrow of pickableArrows.getChildren()) {
+			//	Floating Animations
 			if (theArrow.floating == true) {
 				let theAcc = theArrow.floatingAmplitudeY / Math.pow(theArrow.floatingCycleTime/4, 2);
 				if (theArrow.y <= theArrow.centerY - theArrow.floatingAmplitudeY) {
@@ -372,11 +385,25 @@
 					theArrow.setAccelerationY(-1 * theAcc);
 				}
 			}
+
+			// Count for Pickable Arrow Respawning
+			let cond1 = pickableArrows.respawning[theArrow.index];
+			let cond2 = gameTime.secondCounter - pickableArrows.respawnCounter[theArrow.index] >= pickableArrows.respawnTime;
+			if (cond1 & cond2) {
+				theArrow.setVisible(true);
+				pickableArrows.respawning[theArrow.index] = false;
+			}
 		}
+
+
 
 	}
 
 	// ===== Tools Functions =====
+	function timeSecondCount () {
+		gameTime.secondCounter += 1;
+	}
+
 	function isKeyDown (keyCode) {
 		if (keys[keyCode]) return true ; else return false;
 	}
@@ -453,7 +480,7 @@
 		theArrow.stuckPosition = {x: theArrow.x - thePlatform.x, y: theArrow.y - thePlatform.y};
 		stuckedArrows.add(theArrow);
 	}
-	function checkArrowPicking (thePlayer, theArrow, groupOfArrow) {
+	function checkArrowPicking (thePlayer, theArrow, groupOfArrow, respawnable) {
 		let minX = thePlayer.x - thePlayer.pickingRange.x;
 		let maxX = thePlayer.x + thePlayer.pickingRange.x;
 		let minY = thePlayer.y - thePlayer.pickingRange.y;
@@ -466,9 +493,14 @@
 			arrowX = theArrow.x;
 			arrowY = theArrow.y;
 		}
-		if (arrowX > minX && arrowX < maxX && arrowY > minY && arrowY < maxY) {
+		if (arrowX > minX && arrowX < maxX && arrowY > minY && arrowY < maxY && theArrow.visible == true) {
 			theArrow.setVisible(false);
-			groupOfArrow.remove(theArrow);
+			if (respawnable) {
+				groupOfArrow.respawning = true;
+				groupOfArrow.respawnCounter[theArrow.index] = gameTime.secondCounter;
+			} else {
+				groupOfArrow.remove(theArrow);
+			}
 			thePlayer.arrowsAmount += 1;
 			updateArrowIcons(thePlayer);
 			return true;
@@ -510,17 +542,23 @@
 		}
 	}
 
-	function spawnPickableArrow (x, y, floating) {
+	function spawnPickableArrow (x, y, floating, index) {
 		let theArrow = pickableArrows.create(x, y, 'arrow');
 		theArrow.rotation = -1 * Math.PI / 2;
 		theArrow.floating = floating;
 		theArrow.body.allowGravity = false;
+		theArrow.index = 0;
 		theArrow.centerX = x;
 		theArrow.centerY = y;
 		theArrow.floatingAmplitudeY = defaultArrowFloatingAmplitudeY;
 		theArrow.y = theArrow.y - theArrow.floatingAmplitudeY;
 		theArrow.floatingCycleTime = defaultArrowFloatingCycleTime;
+		pickableArrows.respawnTime[index] = defaultPickableArrowRespawnTime;
+		pickableArrows.respawning[index] = false;
 		return theArrow;
+	}
+	function respawnPickableArrow (index) {
+
 	}
 
 	function updateHealthDisplay (thePlayer) {
