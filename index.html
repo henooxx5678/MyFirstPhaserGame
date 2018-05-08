@@ -104,7 +104,7 @@
 	//----------------------------------------------------------------
 
 	var gameTime = {
-		secondCounter: 0
+		framesCounter: 0
 	};
 
 	var platforms;
@@ -132,12 +132,6 @@
 	}
 
 	function create () {
-		this.time.addEvent({
-			delay: 1000,		// measure in milisec.
-			callback: timeSecondCount,
-			callbackScope: this
-		});
-
 		platforms = this.physics.add.staticGroup();
 
 		platforms.create(400, 575, 'ground');
@@ -262,6 +256,8 @@
 	}
 
 	function update () {
+
+		timeFrameCount();
 		// Players' Movement
 		// Players' Jump at func 'keyTrigger'
 		for (let thePlayer of player) {
@@ -386,12 +382,15 @@
 				}
 			}
 
-			// Count for Pickable Arrow Respawning
+			// Time Count for Pickable Arrow Respawning
 			let cond1 = pickableArrows.respawning[theArrow.index];
-			let cond2 = gameTime.secondCounter - pickableArrows.respawnCounter[theArrow.index] >= pickableArrows.respawnTime;
-			if (cond1 & cond2) {
-				theArrow.setVisible(true);
-				pickableArrows.respawning[theArrow.index] = false;
+			let cond2 = gameTime.framesCounter - pickableArrows.respawnCounter[theArrow.index] >= pickableArrows.respawnTime[theArrow.index] * defaultFps;
+			if (cond1) {
+				console.log(pickableArrows.respawnTime[theArrow.index] - gameTime.framesCounter + (60 * pickableArrows.respawnCounter[theArrow.index]));
+				if (cond2) {
+					theArrow.setVisible(true);
+					pickableArrows.respawning[theArrow.index] = false;
+				}
 			}
 		}
 
@@ -400,8 +399,8 @@
 	}
 
 	// ===== Tools Functions =====
-	function timeSecondCount () {
-		gameTime.secondCounter += 1;
+	function timeFrameCount () {
+		gameTime.framesCounter += 1;
 	}
 
 	function isKeyDown (keyCode) {
@@ -496,8 +495,8 @@
 		if (arrowX > minX && arrowX < maxX && arrowY > minY && arrowY < maxY && theArrow.visible == true) {
 			theArrow.setVisible(false);
 			if (respawnable) {
-				groupOfArrow.respawning = true;
-				groupOfArrow.respawnCounter[theArrow.index] = gameTime.secondCounter;
+				groupOfArrow.respawning[theArrow.index] = true;
+				groupOfArrow.respawnCounter[theArrow.index] = gameTime.framesCounter;
 			} else {
 				groupOfArrow.remove(theArrow);
 			}
@@ -556,9 +555,6 @@
 		pickableArrows.respawnTime[index] = defaultPickableArrowRespawnTime;
 		pickableArrows.respawning[index] = false;
 		return theArrow;
-	}
-	function respawnPickableArrow (index) {
-
 	}
 
 	function updateHealthDisplay (thePlayer) {
