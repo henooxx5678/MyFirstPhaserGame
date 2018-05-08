@@ -87,7 +87,7 @@
 	const defaultWalkVelocity = [300, 300];
 	const defaultJumpVelocity = [-400, -400];
 	const defaultStatePositionX = [80, 720];
-	const defaultHealth = [5, 5];
+	const defaultHp = [5, 5];
 	const defaultArrowsAmount = [3, 3];
 	const defaultMaxArrowsAmount = [3, 3];
 	const defaultArrowIconDirection = [1, -1];
@@ -178,7 +178,7 @@
 			player[i].walkVelocity = defaultWalkVelocity[i];
 			player[i].jumpVelocity = defaultJumpVelocity[i];
 			player[i].statePositionX = defaultStatePositionX[i];
-			player[i].health = defaultHealth[i];
+			player[i].hp = defaultHp[i];
 			player[i].arrowsAmount = defaultArrowsAmount[i];
 			player[i].maxArrowsAmount = defaultMaxArrowsAmount[i];
 			player[i].arrowIconDirection = defaultArrowIconDirection[i];
@@ -199,12 +199,12 @@
 			thePlayer.stateDisplay = {
 				'arrowIcons': this.add.group(),
 				'heartIcon': this.add.image(thePlayer.statePositionX, 50, 'heart'),
-				'healthText': this.add.text(thePlayer.statePositionX - 10, 50 - 14, '', {fontSize: '33px', fill: '#ffffff'})
+				'hpText': this.add.text(thePlayer.statePositionX - 10, 50 - 14, '', {fontSize: '33px', fill: '#ffffff'})
 			}
 			for (var i = 0; i < thePlayer.maxArrowsAmount; i++) {
 				thePlayer.stateDisplay.arrowIcons.create(thePlayer.statePositionX, i * 50 + 120, 'arrow-icon').scaleX *= thePlayer.arrowIconDirection;
 			}
-			updateHealthDisplay(thePlayer);
+			updateHpDisplay(thePlayer);
 			updateArrowIcons(thePlayer);
 		}
 
@@ -261,7 +261,10 @@
 		// Players' Movement
 		// Players' Jump at func 'keyTrigger'
 		for (let thePlayer of player) {
-			if (thePlayer.health < 1) continue;
+			if (thePlayer.hp < 1) {
+				thePlayer.setVelocity(0);
+				continue;
+			}
 			if (isKeyDown(thePlayer.controlling.down.keyCode) && thePlayer.body.touching.down) {
 				thePlayer.setVelocityX(0);
 				thePlayer.anims.play('crouch', true);
@@ -386,15 +389,12 @@
 			let cond1 = pickableArrows.respawning[theArrow.index];
 			let cond2 = gameTime.framesCounter - pickableArrows.respawnCounter[theArrow.index] >= pickableArrows.respawnTime[theArrow.index] * defaultFps;
 			if (cond1) {
-				console.log(pickableArrows.respawnTime[theArrow.index] - gameTime.framesCounter + (60 * pickableArrows.respawnCounter[theArrow.index]));
 				if (cond2) {
 					theArrow.setVisible(true);
 					pickableArrows.respawning[theArrow.index] = false;
 				}
 			}
 		}
-
-
 
 	}
 
@@ -409,14 +409,19 @@
 
 	function keyDownTrigger (keyCode) {
 		for (let thePlayer of player) {
+			if (thePlayer.hp < 1) continue;
+
 			// Player Jump
 			if (keyCode == thePlayer.controlling.jump.keyCode && thePlayer.body.touching.down && !isKeyDown(keyCode)) {	// Player Jump Detecting
 				thePlayer.setVelocityY(thePlayer.jumpVelocity);
 			}
+
 			// Player shoot
 			if (keyCode == thePlayer.controlling.shoot.keyCode && thePlayer.arrowsAmount > 0) {
 				shootArrow(thePlayer);
 			}
+
+			// Player aim
 			if (keyCode == thePlayer.controlling.aim.right.keyCode) thePlayer.aimingDirection = 0;
 			if (keyCode == thePlayer.controlling.aim.righttop.keyCode) thePlayer.aimingDirection = -1 * Math.PI / 4;
 			if (keyCode == thePlayer.controlling.aim.top.keyCode) thePlayer.aimingDirection = -1 * Math.PI / 2;
@@ -454,13 +459,11 @@
 		theArrow.loosedTime = 0;	// measure in frame
 	}
 	function getHit (thePlayer, theArrow) {
-		// console.log('getHit');
-		// testGetHit = true;
 		if (theArrow.from == thePlayer) theArrow.loosedTime += -1;
-
 		if (theArrow.loosedTime > 0 || theArrow.from != thePlayer) {
-			thePlayer.health += -1;
-			updateHealthDisplay(thePlayer);
+			if (thePlayer.hp > 0) thePlayer.hp += -1;
+			if (thePlayer.hp < 1) playerDie(thePlayer);
+			updateHpDisplay(thePlayer);
 			arrows.remove(theArrow);
 			theArrow.body.allowGravity = false;
 			theArrow.setVelocity(0, 0);
@@ -470,6 +473,11 @@
 			stuckedArrows.add(theArrow);
 		}
 	}
+	function playerDie (thePlayer) {
+		thePlayer.setTint(0x900000);
+		thePlayer.bow.setVisible(false);
+	}
+
 	function arrowStuck (theArrow, thePlatform) {
 		arrows.remove(theArrow);
 		theArrow.body.allowGravity = false;
@@ -546,7 +554,7 @@
 		theArrow.rotation = -1 * Math.PI / 2;
 		theArrow.floating = floating;
 		theArrow.body.allowGravity = false;
-		theArrow.index = 0;
+		theArrow.index = index;
 		theArrow.centerX = x;
 		theArrow.centerY = y;
 		theArrow.floatingAmplitudeY = defaultArrowFloatingAmplitudeY;
@@ -557,8 +565,8 @@
 		return theArrow;
 	}
 
-	function updateHealthDisplay (thePlayer) {
-		thePlayer.stateDisplay.healthText.setText('' + thePlayer.health);
+	function updateHpDisplay (thePlayer) {
+		thePlayer.stateDisplay.hpText.setText('' + thePlayer.hp);
 	}
 	function updateArrowIcons (thePlayer) {
 		thePlayer.stateDisplay.arrowIcons.children.iterate(function (child) {
