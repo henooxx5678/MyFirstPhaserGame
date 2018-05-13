@@ -23,7 +23,14 @@
 	</style>
 </head>
 <body>
+	<script src="/socket.io/socket.io.js"></script>
 	<script type="text/javascript">
+	// ======= Client =======
+	var client = {};
+	client.socket = io.connect();
+
+	// ======== Game ========
+
 	var config = {
 		type: Phaser.AUTO,
 		width: 800,
@@ -41,8 +48,6 @@
 			update: update
 		}
 	};
-
-	//----------------------------------------------------------------
 
 	const defaultControlling = [{
 		'up': new Phaser.Input.Keyboard.Key(87),				// key: W
