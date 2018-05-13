@@ -31,24 +31,6 @@
 
 	// ======== Game ========
 
-	var config = {
-		type: Phaser.AUTO,
-		width: 800,
-		height: 600,
-		physics: {
-			default: 'arcade',
-			arcade: {
-				gravity: { y: 1000 },
-				debug: false
-			}
-		},
-		scene: {
-			preload: preload,
-			create: create,
-			update: update
-		}
-	};
-
 	const defaultControlling = [{
 		'up': new Phaser.Input.Keyboard.Key(87),				// key: W
 		'down': new Phaser.Input.Keyboard.Key(83),				// key: S
@@ -108,10 +90,65 @@
 
 	//----------------------------------------------------------------
 
-	var gameTime = {
-		framesCounter: 0
+	var config = {
+		type: Phaser.AUTO,
+		width: 800,
+		height: 600,
+		physics: {
+			default: 'arcade',
+			arcade: {
+				gravity: { y: 1000 },
+				debug: false
+			}
+		},
+		scene: [{
+			key: 'boot',
+			active: true,
+			preload: bootScenePreload,
+			create: bootSceneCreate,
+			update: bootSceneUpdate
+		}, {
+			key: 'lobby',
+			active: false,
+			preload: lobbyScenePreload,
+			create: lobbySceneCreate,
+			update: lobbySceneUpdate
+		}, {
+			key: 'game',
+			active: false,
+			preload: gameScenePreload,
+			create: gameSceneCreate,
+			update: gameSceneUpdate
+		}]
 	};
 
+	var game = new Phaser.Game(config);
+
+
+	// Boot Scene
+	function bootScenePreload () {
+		console.log('[BootScene] preload..');
+	}
+	function bootSceneCreate () {
+		console.log('[BootScene] create..');
+	}
+	function bootSceneUpdate () {
+		// console.log('[BootScene] update..');
+	}
+
+	// Lobby Scene
+	function lobbyScenePreload () {
+		console.log('[LobbyScene] preload..');
+	}
+	function lobbySceneCreate () {
+		console.log('[LobbyScene] create..');
+	}
+	function lobbySceneUpdate () {
+		// console.log('[LobbyScene] update..');
+	}
+
+	// Game Scene
+	var gameTime = { framesCounter: 0 };
 	var platforms;
 	var player = [];
 	var arrows;
@@ -124,9 +161,8 @@
 	var mouseKeyIsDown = false;
 	var mousePosition = {'x': null, 'y': null};
 
-	var game = new Phaser.Game(config);
-
-	function preload () {
+	function gameScenePreload () {
+		console.log('[GameScene] preload..');
 		this.load.image('ground', 'src/game/img/ground.png');
 		this.load.image('heart', 'src/game/img/heart.png');
 		this.load.image('arrow-icon', 'src/game/img/arrow-icon.png');
@@ -136,7 +172,8 @@
 		this.load.spritesheet('player-white', 'src/game/img/player-white.png', {frameWidth: 29, frameHeight: 60});
 	}
 
-	function create () {
+	function gameSceneCreate () {
+		console.log('[GameScene] create..');
 		platforms = this.physics.add.staticGroup();
 
 		platforms.create(400, 575, 'ground');
@@ -260,7 +297,8 @@
 		spawnPickableArrow(400, 450, true, 0);
 	}
 
-	function update () {
+	function gameSceneUpdate () {
+		// console.log('[GameScene] update..');
 
 		timeFrameCount();
 		// Players' Movement
