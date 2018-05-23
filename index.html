@@ -3,6 +3,7 @@
 <head>
 	<meta charset="UTF-8" />
 	<title>My First Game Built with Phaser 3</title>
+	<link rel="stylesheet" type="text/css" href="/css/game.css">
 	<script src="//cdn.jsdelivr.net/npm/phaser@3.1.1/dist/phaser.js"></script>
 	<style type="text/css">
 	html {
@@ -23,7 +24,10 @@
 	</style>
 </head>
 <body>
+	<div class="js-overlay overlay"></div>
+
 	<script src="/socket.io/socket.io.js"></script>
+	<script src="/js/tool-func.js" charset="utf-8"></script>
 	<script type="text/javascript">
 	// ======= Client =======
 	var client = {};
@@ -105,8 +109,7 @@
 			key: 'boot',
 			active: true,
 			preload: bootScenePreload,
-			create: bootSceneCreate,
-			update: bootSceneUpdate
+			create: bootSceneCreate
 		}, {
 			key: 'lobby',
 			active: false,
@@ -123,6 +126,8 @@
 	};
 
 	var game = new Phaser.Game(config);
+	var overlay = document.querySelector('.js-overlay');
+
 
 
 	// Boot Scene
@@ -132,10 +137,32 @@
 	}
 	function bootSceneCreate () {
 		console.log('[BootScene] create..');
-		
+		let nameInput = {
+			form: document.createElement('form'),
+			title: document.createElement('div'),
+			textField: document.createElement('input'),
+			submitButton: document.createElement('input')
+		}
+		nameInput.form.setAttribute('id', 'name-input-form');
+		nameInput.form.setAttribute('onsubmit', 'nameSubmit()');
+		nameInput.title.setAttribute('id', 'name-input-title');
+		nameInput.title.innerHTML = 'Hello World!';
+		nameInput.textField.setAttribute('id', 'name-input-text-field');
+		nameInput.textField.setAttribute('type', 'text');
+		nameInput.textField.setAttribute('placeholder', 'Enter Your Name');
+		nameInput.textField.setAttribute('value', '');
+		nameInput.textField.autofocus = true;
+		nameInput.submitButton.setAttribute('id', 'name-input-submit-button');
+		nameInput.submitButton.setAttribute('type', 'submit');
+		nameInput.submitButton.setAttribute('value', 'Join');
+		nameInput.form.appendChild(nameInput.title);
+		nameInput.form.appendChild(nameInput.textField);
+		nameInput.form.appendChild(nameInput.submitButton);
+		overlay.appendChild(nameInput.form);
 	}
-	function bootSceneUpdate () {
-		// console.log('[BootScene] update..');
+
+	function nameSubmit () {
+		
 	}
 
 	// Lobby Scene
@@ -441,50 +468,6 @@
 			}
 		}
 
-	}
-
-	// ===== Tools Functions =====
-	function timeFrameCount () {
-		gameTime.framesCounter += 1;
-	}
-
-	function isKeyDown (keyCode) {
-		if (keys[keyCode]) return true ; else return false;
-	}
-
-	function keyDownTrigger (keyCode) {
-		for (let thePlayer of player) {
-			if (thePlayer.hp < 1) continue;
-
-			// Player Jump
-			if (keyCode == thePlayer.controlling.jump.keyCode && thePlayer.body.touching.down && !isKeyDown(keyCode)) {	// Player Jump Detecting
-				thePlayer.setVelocityY(thePlayer.jumpVelocity);
-			}
-
-			// Player shoot
-			if (keyCode == thePlayer.controlling.shoot.keyCode && thePlayer.arrowsAmount > 0) {
-				shootArrow(thePlayer);
-			}
-
-			// Player aim
-			if (keyCode == thePlayer.controlling.aim.right.keyCode) thePlayer.aimingDirection = 0;
-			if (keyCode == thePlayer.controlling.aim.righttop.keyCode) thePlayer.aimingDirection = -1 * Math.PI / 4;
-			if (keyCode == thePlayer.controlling.aim.top.keyCode) thePlayer.aimingDirection = -1 * Math.PI / 2;
-			if (keyCode == thePlayer.controlling.aim.lefttop.keyCode) thePlayer.aimingDirection = -3 * Math.PI / 4;
-			if (keyCode == thePlayer.controlling.aim.left.keyCode) thePlayer.aimingDirection = Math.PI;
-			if (keyCode == thePlayer.controlling.aim.rightbottom.keyCode) thePlayer.aimingDirection = Math.PI / 4;
-			if (keyCode == thePlayer.controlling.aim.bottom.keyCode) thePlayer.aimingDirection = Math.PI / 2;
-			if (keyCode == thePlayer.controlling.aim.leftbottom.keyCode) thePlayer.aimingDirection = 3 * Math.PI / 4;
-		}
-	}
-	function keyUpTrigger (keyCode) {
-		for (let thePlayer of player) {
-			if (keyCode == thePlayer.controlling.up.keyCode) {
-				thePlayer.arrowOnBodyCollecting.time = 0;
-				thePlayer.arrowOnBodyCollecting.circle.clear();
-				thePlayer.arrowOnBodyCollecting.done = false;
-			}
-		}
 	}
 
 	// ===== Game Functions =====
