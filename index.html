@@ -34,6 +34,7 @@
 	client.socket = io.connect();
 
 	// ======== Game ========
+	const clientNameIllegalChars = [' '];
 
 	const defaultControlling = [{
 		'up': new Phaser.Input.Keyboard.Key(87),				// key: W
@@ -127,7 +128,7 @@
 
 	var game = new Phaser.Game(config);
 	var overlay = document.querySelector('.js-overlay');
-
+	var clientName;
 
 
 	// Boot Scene
@@ -162,12 +163,23 @@
 	}
 
 	function nameSubmit () {
-		
+		let clientInput = document.getElementById('name-input-text-field').value;
+		for (let illegelChar in clientNameIllegalChars) {
+			if (clientInput.includes(illegelChar)) {
+				alert('Invalid Characher');
+				clientInput = '';
+			} else {
+				clientName = clientInput;
+				game.scene.stop('boot');
+				game.scene.start('lobby');
+			}
+		}
 	}
 
 	// Lobby Scene
 	function lobbyScenePreload () {
 		console.log('[LobbyScene] preload..');
+		this.load.spritesheet('player-white', 'src/game/img/player-white.png', {frameWidth: 29, frameHeight: 60});
 	}
 	function lobbySceneCreate () {
 		console.log('[LobbyScene] create..');
